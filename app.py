@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -14,13 +14,8 @@ SMTP_PORT = 587
 EMAIL_ADDRESS = "khanmohdtalha3250@gmail.com"  # Replace with your email
 EMAIL_PASSWORD = os.getenv("app_password")  # Replace with your app password
 
-def send_email():
+def send_email(to_address, cc_address, subject, body, files):
     # Set up the email
-    subject = "Python (Selenium) Assignment - Khan Mohd Talha"
-    to_address = "kt7863250@gmail.com"
-    cc_address = "ktmt7863250@gmail.com"
-
-    # Create the email
     msg = MIMEMultipart()
     msg['From'] = EMAIL_ADDRESS
     msg['To'] = to_address
@@ -28,32 +23,9 @@ def send_email():
     msg['Subject'] = subject
 
     # Email body
-    body = """Dear Team,
-
-Please find my submission for the Python (Selenium) assignment attached below. Here are the details:
-
-1. Screenshot: Form filled via the code screenshot is attached below.
-2. Source Code: GitHub repository link - [google.com]
-3. Documentation: Included in the attached file.
-4. Resume: Attached.
-5. Work Samples: [Project Link 1], [Project Link 2]
-6. Availability: I confirm my availability to work full time (10 am to 7 pm) for the next 3-6 months.
-
-Thank you for considering my application. Let me know if you need any further details.
-
-Best Regards,
-[Your Name]
-"""
-
     msg.attach(MIMEText(body, 'plain'))
 
-    # Attachments
-    files = [
-        "confirmation_page.png",  # Screenshot
-        "resume.pdf",             # Resume
-        "documentation.txt"       # Documentation
-    ]
-
+    # Attach files
     for file in files:
         attachment = MIMEBase('application', 'octet-stream')
         with open(file, 'rb') as f:
@@ -72,10 +44,28 @@ Best Regards,
     except Exception as e:
         print(f"Failed to send email: {e}")
 
-# Flask route to trigger email
+# Home route for form submission
+@app.route('/')
+def home():
+    return render_template('index.html')
+
+# Submit route to send email
 @app.route('/submit', methods=['POST'])
 def submit_assignment():
-    send_email()
+    to_address = request.form['to']
+    cc_address = request.form['cc']
+    subject = request.form['subject']
+    body = request.form['body']
+
+    # Handle file uploads
+    files = []
+    for file in request.files.getlist('files'):
+        file_path = os.path.join('uploads', file.filename)
+        file.save(file_path)
+        files.append(file_path)
+
+    send_email(to_address, cc_address, subject, body, files)
+    
     return jsonify({"status": "success", "message": "Assignment submitted successfully!"})
 
 if __name__ == "__main__":
